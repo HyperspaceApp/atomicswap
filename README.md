@@ -2,6 +2,7 @@
 
 This repository contains utilities to manually perform cross-chain atomic swaps between various supported pairs of cryptocurrencies. At the moment, support exists for the following coins and wallets:
 
+* Hyperspace ([Hyperspace Core](https://github.com/HyperspaceApp/Hyperspace))
 * Siacoin ([Siacoin Core](https://gitlab.com/NebulousLabs/Sia))
 
 Pull requests implementing support for additional cryptocurrencies and wallets
