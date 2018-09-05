@@ -50,10 +50,10 @@ Commands:
   buildnonce <local private key> <message>
   signrefund <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <peer refund transaction>
   verifyrefundsignature <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <local refund transaction> <peer refund signature>
-  broadcastfunding <funding transaction>
-  refund <refund transaction>
-  buildnoncewithadaptor <local private key> <peer public key> <nonce point 0> <participant claim transaction>
+  broadcast <transaction>
+  buildadaptor
+  signwithadaptor <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor>
   verifyadaptor <local private key> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor signature>
-  claimwithadaptor <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <peer signature> <adaptor>
+  claimwithadaptor <local signature> <peer signature> <adaptor point> <adaptor>
   extractsecret <claim transaction> <local signature> <peer signature>
 ```
