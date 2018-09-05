@@ -97,7 +97,7 @@ func init() {
 		fmt.Println("  signwithadaptor <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor>")
 		fmt.Println("  verifyadaptor <local private key> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor signature>")
 		fmt.Println("  claimwithadaptor <local signature> <peer signature> <claim transaction> <adaptor point> <adaptor>")
-		fmt.Println("  extractsecret <claim transaction> <local signature> <peer signature>")
+		fmt.Println("  extractsecret <claim signature> <local signature> <peer signature>")
 		fmt.Println()
 		fmt.Println("Flags:")
 		flagset.PrintDefaults()
