@@ -74,7 +74,7 @@ The 3 transactions are as follows:
   - an unsigned refund transaction, sending coins to a <refund address> after <refund height> has occurred
   - an unsigned claim transaction, sending coins to your peer's <claim address>
 
-The joint address is automatically built using a combination or your and your peer's public keys on the chain for which these transactions are being generated. The joint address public key is derived using the `<local private key>`, `<local participant number>`, and `<peer public key> parameters`.
+The joint address is automatically built using a combination or your and your peer's public keys on the chain for which these transactions are being generated. The joint address public key is derived using the `<local private key>`, `<local participant number>`, and `<peer public key>` parameters.
 
 The `<local participant number>` should always be 0 for the participant who doesn't build the secret adaptor and 1 for the participant who builds the secret adaptor.
 
@@ -82,3 +82,23 @@ The `<refund height>` should be set as some future point, say 24 hours later, fo
 
 `<amount>` is the amount of coins the transaction builder wants to send on this chain.
   
+**`buildnonce <local private key> <message>`***
+
+The `buildnonce` command builds a public nonce point from a given message. It is used to build a nonce point for the refund transaction.
+
+**`signrefund <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <peer refund transaction>`**
+
+The `signrefund` command generates a signature for the peer's refund transaction. `<nonce point 0>` corresponds to participant 0's nonce point generated from the refund transaction, and `<nonce poin 1>` corresponds to participant 1's nonce point.
+
+**`verifyrefundsignature <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <local refund transaction> <peer refund signature>`**
+
+The `verifyrefundsignature` command verifies that your peer's signature of your refund transaction is valid. If valid, the command will build and print a signed refund transaction that you can broadcast if desired.
+
+**`broadcast <transaction>`**
+
+The `broadcast` command broadcasts a raw transaction. If the transaction has not already been signed, the broadcast will fail.
+
+**`buildadaptor`**
+
+The `buildadaptor` command builds a secret adaptor scalar and a corresponding public elliptic curve point, the adaptor point.
+
