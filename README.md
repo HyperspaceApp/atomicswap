@@ -8,6 +8,10 @@ This repository contains utilities to manually perform cross-chain atomic swaps 
 Pull requests implementing support for additional cryptocurrencies and wallets
 are encouraged. 
 
+These tools do not operate solely on-chain. A side-channel is required between each party performing the swap in order to exchange additional data. This side-channel could be as simple as a text chat and copying data. Until a more streamlined implementation of the side channel exists, such as the Lightning Network, these tools suffice as a proof-of-concept for cross-chain atomic swaps and a way for early adopters to try out the technology.
+
+Due to the requirements of manually exchanging data and creating, sending, and watching for the relevant transactions, it is highly recommended to read this README in its entirety before attempting to use these tools. The sections below explain the principles on which the tools operate and the instructions for how to use them safely.
+
 ## Build Instructions
 
 Pre-requirements:
@@ -23,6 +27,12 @@ $ go install ./cmd/...
 ```
 
 ## Theory
+
+A cross-chain swap is a trade between two users of different cryptocurrencies. For example, one party may send Space Cash to a second party's Space Cash address, while the second party would send Siacoin to the first party's Siacoin address. However, as the blockchains are unrelated and transactions can not be reversed, this provides no protection against one of the parties never honoring their end of the trade. One common solution to this problem is to introduce a mutually-trusted third party for escrow. An atomic cross-chain swap solves this problem without the need for a third party. 
+
+This tool provides a variant of the atomic cross-chain swap technique that uses Schnorr adaptor signatures. This variant will henceforth be known as a "scriptless atomic swap" due to the fact that coins using Schnorr signatures, such as Space Cash, do not need to have scripting support to enable the swap. The only requirement is that the consensus supports some form of transaction timelock. The ability to swap trustlessly derives entirely from careful aggregate key and nonce creation. To an outside observer, the swap transactions should not be linkable between chains and should be indistinguishable from normal transactions.
+
+Scriptless atomic swaps involve each party paying into a joint public key's address, one address for each blockchain. The address contains an output that is spendable via a 2-of-2 aggregate signature. Once the funding has been paiding into the joint key's address, both parties must sign to release it either back to the funder via a refund transaction or to the original intended recipient via a claim transaction. These transactions are structured as follows:
 
 ## Create Keypairs and Build Transactions
 
