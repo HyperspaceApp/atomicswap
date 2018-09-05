@@ -102,3 +102,10 @@ The `broadcast` command broadcasts a raw transaction. If the transaction has not
 
 The `buildadaptor` command builds a secret adaptor scalar and a corresponding public elliptic curve point, the adaptor point.
 
+**`signwithadaptor <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor>`**
+
+The `signwithadaptor` command signs a claim transaction using the secret adaptor and the public adaptor point and outsput the signature. This command is used by participant 1 to sign the claim transactions on both chains.
+
+**`verifyadaptor <local private key> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor signature>`**
+
+The `verifyadaptor` command verifies the peer's `<adaptor signature>` is valid for the given `<claim transaction>`. If valid, the command also generates and prints your own adaptor signature.
