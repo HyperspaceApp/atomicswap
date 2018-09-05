@@ -16,6 +16,7 @@ import (
 	"strings"
 	"encoding/base64"
 
+
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/node/api/client"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
@@ -83,7 +84,7 @@ func (cp *CurvePoint) LoadString(s string) error {
 
 func init() {
 	flagset.Usage = func() {
-		fmt.Println("Usage: spaceatomicswap [flags] cmd [cmd args]")
+		fmt.Println("Usage: siaatomicswap [flags] cmd [cmd args]")
 		fmt.Println()
 		fmt.Println("Commands:")
 		fmt.Println("  buildkeys")
@@ -91,11 +92,11 @@ func init() {
 		fmt.Println("  buildnonce <local private key> <message>")
 		fmt.Println("  signrefund <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <peer refund transaction>")
 		fmt.Println("  verifyrefundsignature <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <local refund transaction> <peer refund signature>")
-		fmt.Println("  broadcastfunding <funding transaction>")
-		fmt.Println("  refund <refund transaction>")
-		fmt.Println("  buildnoncewithadaptor <local private key> <peer public key> <nonce point 0> <participant claim transaction>")
+		fmt.Println("  broadcast <transaction>")
+		fmt.Println("  buildadaptor")
+		fmt.Println("  signwithadaptor <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor>")
 		fmt.Println("  verifyadaptor <local private key> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor signature>")
-		fmt.Println("  claimwithadaptor <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <peer signature> <adaptor>")
+		fmt.Println("  claimwithadaptor <local signature> <peer signature> <adaptor point> <adaptor>")
 		fmt.Println("  extractsecret <claim transaction> <local signature> <peer signature>")
 		fmt.Println()
 		fmt.Println("Flags:")
@@ -149,20 +150,11 @@ type verifyRefundSignatureCmd struct {
 	peerRefundSignature Signature
 }
 
-type broadcastFundingCmd struct {
+type broadcastCmd struct {
 	transaction types.Transaction
 }
 
-type refundCmd struct {
-	transaction types.Transaction
-}
-
-type buildNonceWithAdaptorCmd struct {
-	privateKey ed25519.PrivateKey
-	peerPublicKey ed25519.PublicKey
-	noncePoint0 CurvePoint
-	claimTransaction types.Transaction
-}
+type buildAdaptorCmd struct {}
 
 type verifyAdaptorCmd struct {
 	privateKey ed25519.PrivateKey
@@ -174,7 +166,7 @@ type verifyAdaptorCmd struct {
 	adaptorSignature Signature
 }
 
-type claimWithAdaptorCmd struct {
+type signWithAdaptorCmd struct {
 	privateKey ed25519.PrivateKey
 	participantNum int
 	peerPublicKey ed25519.PublicKey
@@ -182,10 +174,15 @@ type claimWithAdaptorCmd struct {
 	noncePoint1 CurvePoint
 	adaptorPoint CurvePoint
 	claimTransaction types.Transaction
-	peerSignature Signature
 	adaptor Adaptor
-	debugPrivateKey0 ed25519.PrivateKey
-	debugSignature Signature
+}
+
+type claimWithAdaptorCmd struct {
+	localSignature Signature
+	peerSignature Signature
+	claimTransaction types.Transaction
+	adaptorPoint CurvePoint
+	adaptor Adaptor
 }
 
 type extractSecretCmd struct {
@@ -241,12 +238,14 @@ func run() (err error, showUsage bool) {
 		cmdArgs = 1
 	case "refund":
 		cmdArgs = 1
-	case "buildnoncewithadaptor":
-		cmdArgs = 4
+	case "buildadaptor":
+		cmdArgs = 0
 	case "verifyadaptor":
 		cmdArgs = 7
-	case "claimwithadaptor":
+	case "signwithadaptor":
 		cmdArgs = 8
+	case "claimwithadaptor":
+		cmdArgs = 4
 	case "extractsecret":
 		cmdArgs = 3
 	default:
@@ -428,7 +427,7 @@ func run() (err error, showUsage bool) {
 			refundTransaction: refundTx,
 			peerRefundSignature: signature,
 		}
-	case "broadcastfunding":
+	case "broadcast":
 		var tx types.Transaction
 		txBytes, err := base64.StdEncoding.DecodeString(args[1])
 		if err != nil {
@@ -438,57 +437,11 @@ func run() (err error, showUsage bool) {
 		if err != nil {
 			return err, true
 		}
-		cmd = &broadcastFundingCmd{
+		cmd = &broadcastCmd{
 			transaction: tx,
 		}
-	case "refund":
-		var tx types.Transaction
-		txBytes, err := base64.StdEncoding.DecodeString(args[1])
-		if err != nil {
-			return err, true
-		}
-		err = encoding.Unmarshal(txBytes, &tx)
-		if err != nil {
-			return err, true
-		}
-		cmd = &refundCmd{
-			transaction: tx,
-		}
-	case "buildnoncewithadaptor":
-		var privateKey ed25519.PrivateKey
-		var peerPublicKey ed25519.PublicKey
-		privateKey = make([]byte, PrivateKeySize)
-		peerPublicKey = make([]byte, PublicKeySize)
-		privateKeyBytes, err := encoding.HexStringToBytes(args[1])
-		if err != nil {
-			return err, true
-		}
-		copy(privateKey[:], privateKeyBytes[:])
-		peerPublicKeyBytes, err := encoding.HexStringToBytes(args[2])
-		if err != nil {
-			return err, true
-		}
-		copy(peerPublicKey[:], peerPublicKeyBytes[:])
-		var noncePoint0 CurvePoint
-		err = noncePoint0.LoadString(args[3])
-		if err != nil {
-			return err, true
-		}
-		var claimTx types.Transaction
-		claimTxBytes, err := base64.StdEncoding.DecodeString(args[4])
-		if err != nil {
-			return err, true
-		}
-		err = encoding.Unmarshal(claimTxBytes, &claimTx)
-		if err != nil {
-			return err, true
-		}
-		cmd = &buildNonceWithAdaptorCmd{
-			privateKey: privateKey,
-			peerPublicKey: peerPublicKey,
-			noncePoint0: noncePoint0,
-			claimTransaction: claimTx,
-		}
+	case "buildadaptor":
+		cmd = &buildAdaptorCmd{}
 	case "verifyadaptor":
 		var privateKey ed25519.PrivateKey
 		var peerPublicKey ed25519.PublicKey
@@ -541,7 +494,7 @@ func run() (err error, showUsage bool) {
 			claimTransaction: claimTx,
 			adaptorSignature: signature,
 		}
-	case "claimwithadaptor":
+	case "signwithadaptor":
 		var privateKey ed25519.PrivateKey
 		var peerPublicKey ed25519.PublicKey
 		privateKeyBytes, err := encoding.HexStringToBytes(args[1])
@@ -549,17 +502,17 @@ func run() (err error, showUsage bool) {
 			return err, true
 		}
 		privateKey = make([]byte, PrivateKeySize)
-		copy(privateKey[:], privateKeyBytes[:])
 		participantNum64, err := strconv.ParseInt(args[2], 10, 32)
 		if err != nil {
 			return err, true
 		}
 		participantNum := int(participantNum64)
+		peerPublicKey = make([]byte, PublicKeySize)
+		copy(privateKey[:], privateKeyBytes[:])
 		peerPublicKeyBytes, err := encoding.HexStringToBytes(args[3])
 		if err != nil {
 			return err, true
 		}
-		peerPublicKey = make([]byte, PublicKeySize)
 		copy(peerPublicKey[:], peerPublicKeyBytes[:])
 		var noncePoint0, noncePoint1, adaptorPoint CurvePoint
 		err = noncePoint0.LoadString(args[4])
@@ -583,34 +536,13 @@ func run() (err error, showUsage bool) {
 		if err != nil {
 			return err, true
 		}
-		var signature Signature
-		sigBytes, err := encoding.HexStringToBytes(args[8])
+		adaptorBytes, err := encoding.HexStringToBytes(args[8])
 		if err != nil {
 			return err, true
 		}
-		copy(signature[:], sigBytes[:])
 		var adaptor Adaptor
-		adaptorBytes, err := encoding.HexStringToBytes(args[9])
-		if err != nil {
-			return err, true
-		}
 		copy(adaptor[:], adaptorBytes[:])
-		/*
-		var debugPrivateKey0 ed25519.PrivateKey
-		debugPrivateKey0Bytes, err := encoding.HexStringToBytes(args[9])
-		if err != nil {
-			return err, true
-		}
-		debugPrivateKey0 = make([]byte, PrivateKeySize)
-		copy(debugPrivateKey0[:], debugPrivateKey0Bytes[:])
-		var debugSignature Signature
-		debugSigBytes, err := encoding.HexStringToBytes(args[10])
-		if err != nil {
-			return err, true
-		}
-		copy(debugSignature[:], debugSigBytes[:])
-		*/
-		cmd = &claimWithAdaptorCmd{
+		cmd = &signWithAdaptorCmd{
 			privateKey: privateKey,
 			participantNum: participantNum,
 			peerPublicKey: peerPublicKey,
@@ -618,12 +550,47 @@ func run() (err error, showUsage bool) {
 			noncePoint1: noncePoint1,
 			adaptorPoint: adaptorPoint,
 			claimTransaction: claimTx,
-			peerSignature: signature,
 			adaptor: adaptor,
-			/*
-			debugPrivateKey0: debugPrivateKey0,
-			debugSignature: debugSignature,
-			*/
+		}
+	case "claimwithadaptor":
+		localSig, err := encoding.HexStringToBytes(args[1])
+		if err != nil {
+			return err, true
+		}
+		var localSignature Signature
+		copy(localSignature[:], localSig[:])
+		peerSig, err := encoding.HexStringToBytes(args[2])
+		if err != nil {
+			return err, true
+		}
+		var peerSignature Signature
+		copy(peerSignature[:], peerSig[:])
+		var claimTx types.Transaction
+		claimTxBytes, err := base64.StdEncoding.DecodeString(args[3])
+		if err != nil {
+			return err, true
+		}
+		err = encoding.Unmarshal(claimTxBytes, &claimTx)
+		if err != nil {
+			return err, true
+		}
+		var adaptorPoint CurvePoint
+		err = adaptorPoint.LoadString(args[4])
+		if err != nil {
+			return err, true
+		}
+		var adaptor Adaptor
+		adaptorBytes, err := encoding.HexStringToBytes(args[5])
+		if err != nil {
+			return err, true
+		}
+		copy(adaptor[:], adaptorBytes[:])
+		cmd = &claimWithAdaptorCmd{
+			localSignature: localSignature,
+			peerSignature: peerSignature,
+			claimTransaction: claimTx,
+			adaptorPoint: adaptorPoint,
+			adaptor: adaptor,
 		}
 	case "extractsecret":
 		claimSig, err := encoding.HexStringToBytes(args[1])
@@ -865,43 +832,35 @@ func (cmd *verifyRefundSignatureCmd) runOfflineCommand() error {
 	return nil
 }
 
-func (cmd *broadcastFundingCmd) runCommand(ct context.Context, c client.Client) error {
+func (cmd *broadcastCmd) runCommand(ct context.Context, c client.Client) error {
 	err := c.TransactionPoolRawPost(cmd.transaction, nil)
 	if err != nil {
 		return err
 	}
 	tid := cmd.transaction.ID()
-	fmt.Printf("broadcasted funding transaction: %s\n", encoding.BytesToHexString(tid[:]))
+	fmt.Printf("broadcasted transaction: %s\n", encoding.BytesToHexString(tid[:]))
 	return nil
 }
 
-func (cmd *refundCmd) runCommand(ct context.Context, c client.Client) error {
-	err := c.TransactionPoolRawPost(cmd.transaction, nil)
-	if err != nil {
-		return err
-	}
-	tid := cmd.transaction.ID()
-	fmt.Printf("broadcasted refund transaction: %s\n", encoding.BytesToHexString(tid[:]))
-	return nil
-}
-
-func (cmd *buildNonceWithAdaptorCmd) runCommand(ct context.Context, c client.Client) error {
+func (cmd *buildAdaptorCmd) runCommand(ct context.Context, c client.Client) error {
 	return cmd.runOfflineCommand()
 }
 
-func (cmd *buildNonceWithAdaptorCmd) runOfflineCommand() error {
-	var localPublicKey ed25519.PublicKey
-	var publicKey0, publicKey1 ed25519.PublicKey
-	localPublicKey = make([]byte, PublicKeySize)
-	copy(localPublicKey[:], cmd.privateKey[32:])
-	publicKey0 = cmd.peerPublicKey
-	publicKey1 = localPublicKey
+func (cmd *buildAdaptorCmd) runOfflineCommand() error {
 	adaptor, adaptorPoint, err := ed25519.GenerateAdaptor(fastrand.Reader)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("adaptor: %s\n", encoding.BytesToHexString(adaptor))
 	fmt.Printf("adaptor point: %s\n", encoding.BytesToHexString(adaptorPoint))
+	return nil
+	/*
+	var localPublicKey ed25519.PublicKey
+	var publicKey0, publicKey1 ed25519.PublicKey
+	localPublicKey = make([]byte, PublicKeySize)
+	copy(localPublicKey[:], cmd.privateKey[32:])
+	publicKey0 = cmd.peerPublicKey
+	publicKey1 = localPublicKey
 	jointPrivateKey, err := ed25519.GenerateJointPrivateKey(publicKey0, publicKey1, cmd.privateKey, 1)
 	if err != nil {
 		return err
@@ -926,6 +885,7 @@ func (cmd *buildNonceWithAdaptorCmd) runOfflineCommand() error {
 		return nil
 	}
 	return nil
+	*/
 }
 
 func (cmd *verifyAdaptorCmd) runCommand(ct context.Context, c client.Client) error {
@@ -973,8 +933,11 @@ func (cmd *verifyAdaptorCmd) runOfflineCommand() error {
 	}
 	return nil
 }
+func (cmd *signWithAdaptorCmd) runCommand(ct context.Context, c client.Client) error {
+	return cmd.runOfflineCommand()
+}
 
-func (cmd *claimWithAdaptorCmd) runCommand(ct context.Context, c client.Client) error {
+func (cmd *signWithAdaptorCmd) runOfflineCommand() error {
 	var localPublicKey ed25519.PublicKey
 	localPublicKey = make([]byte, PublicKeySize)
 	copy(localPublicKey[:], cmd.privateKey[32:])
@@ -1000,22 +963,33 @@ func (cmd *claimWithAdaptorCmd) runCommand(ct context.Context, c client.Client) 
 		return err
 	}
 	localSigBytes := ed25519.JointSignWithAdaptor(cmd.privateKey, jointPrivateKey, noncePoint0, noncePoint1, adaptorPoint, msgBytes)
+	fmt.Println("signature: %s\n", encoding.BytesToHexString(localSigBytes))
+	return nil
+}
+
+func (cmd *claimWithAdaptorCmd) runCommand(ct context.Context, c client.Client) error {
+	localSigBytes := make([]byte, SignatureSize)
+	copy(localSigBytes[:], cmd.localSignature[:])
 	peerSigBytes := make([]byte, SignatureSize)
 	copy(peerSigBytes[:], cmd.peerSignature[:])
 	adaptorBytes := make([]byte, SignatureSize)
 	copy(adaptorBytes[:], cmd.adaptorPoint[:])
 	copy(adaptorBytes[32:], cmd.adaptor[:])
+	/*
 	jointPublicKey := make([]byte, PublicKeySize)
 	copy(jointPublicKey[:], jointPrivateKey[32:])
+	*/
 	aggSigBytes := ed25519.AddSignature(peerSigBytes, localSigBytes)
 	aggSigBytes = ed25519.AddSignature(aggSigBytes, adaptorBytes)
+	/*
 	if !ed25519.Verify(jointPublicKey, msgBytes, aggSigBytes) {
 		fmt.Printf("verification failed\n")
 		return nil
 	}
+	*/
 	cmd.claimTransaction.TransactionSignatures[0].Signature = aggSigBytes
 	fmt.Printf("signature: %s\n", encoding.BytesToHexString(aggSigBytes))
-	err = c.TransactionPoolRawPost(cmd.claimTransaction, nil)
+	err := c.TransactionPoolRawPost(cmd.claimTransaction, nil)
 	if err != nil {
 		return err
 	} else {
