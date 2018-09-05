@@ -233,9 +233,7 @@ func run() (err error, showUsage bool) {
 		cmdArgs = 6
 	case "verifyrefundsignature":
 		cmdArgs = 7
-	case "broadcastfunding":
-		cmdArgs = 1
-	case "refund":
+	case "broadcast":
 		cmdArgs = 1
 	case "buildadaptor":
 		cmdArgs = 0
