@@ -89,14 +89,14 @@ func init() {
 		fmt.Println("Commands:")
 		fmt.Println("  buildkeys")
 		fmt.Println("  buildtransactions <local private key> <local participant number> <peer public key> <refund address> <refund height> <claim address> <amount>")
-		fmt.Println("  buildnonce <local private key> <message>")
+		fmt.Println("  buildnoncepoint <local private key> <message>")
 		fmt.Println("  signrefund <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <peer refund transaction>")
 		fmt.Println("  verifyrefundsignature <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <local refund transaction> <peer refund signature>")
 		fmt.Println("  broadcast <transaction>")
 		fmt.Println("  buildadaptor")
 		fmt.Println("  signwithadaptor <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor>")
 		fmt.Println("  verifyadaptor <local private key> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor signature>")
-		fmt.Println("  claimwithadaptor <local signature> <peer signature> <adaptor point> <adaptor>")
+		fmt.Println("  claimwithadaptor <local signature> <peer signature> <claim transaction> <adaptor point> <adaptor>")
 		fmt.Println("  extractsecret <claim transaction> <local signature> <peer signature>")
 		fmt.Println()
 		fmt.Println("Flags:")
@@ -126,7 +126,7 @@ type buildTransactionsCmd struct {
 	amount types.Currency
 }
 
-type buildNonceCmd struct {
+type buildNoncePointCmd struct {
 	privateKey ed25519.PrivateKey
 	message []byte
 }
@@ -228,7 +228,7 @@ func run() (err error, showUsage bool) {
 		cmdArgs = 0
 	case "buildtransactions":
 		cmdArgs = 7
-	case "buildnonce":
+	case "buildnoncepoint":
 		cmdArgs = 2
 	case "signrefund":
 		cmdArgs = 6
@@ -310,7 +310,7 @@ func run() (err error, showUsage bool) {
 			amount: hastings,
 			claimAddress: claimAddress,
 		}
-	case "buildnonce":
+	case "buildnoncepoint":
 		var privateKey ed25519.PrivateKey
 		privateKeyBytes, err := encoding.HexStringToBytes(args[1])
 		if err != nil {
@@ -322,7 +322,7 @@ func run() (err error, showUsage bool) {
 		if err != nil {
 			return err, true
 		}
-		cmd = &buildNonceCmd{
+		cmd = &buildNoncePointCmd{
 			privateKey: privateKey,
 			message: message,
 		}
@@ -739,11 +739,11 @@ func (cmd *buildTransactionsCmd) runCommand(ctx context.Context, c client.Client
 	return nil
 }
 
-func (cmd *buildNonceCmd) runCommand(ctx context.Context, c client.Client) error {
+func (cmd *buildNoncePointCmd) runCommand(ctx context.Context, c client.Client) error {
 	return cmd.runOfflineCommand()
 }
 
-func (cmd *buildNonceCmd) runOfflineCommand() error {
+func (cmd *buildNoncePointCmd) runOfflineCommand() error {
 	noncePoint := buildCurvePoint(cmd.privateKey, cmd.message)
 	var cryptoNoncePoint CurvePoint
 	copy(cryptoNoncePoint[:], noncePoint[:])
@@ -906,7 +906,7 @@ func (cmd *verifyAdaptorCmd) runOfflineCommand() error {
 	fmt.Printf("claim msg: %s\n", encoding.BytesToHexString(msgBytes))
 	adaptorSignature := make([]byte, SignatureSize)
 	copy(adaptorSignature[:], cmd.adaptorSignature[:])
-	fmt.Printf("adaptor Signature: %s\n", encoding.BytesToHexString(adaptorSignature))
+	fmt.Printf("adaptor signature: %s\n", encoding.BytesToHexString(adaptorSignature))
 	var publicKey0, publicKey1, jointPublicKey ed25519.PublicKey
 	publicKey0 = make([]byte, PublicKeySize)
 	copy(publicKey0[:], cmd.privateKey[32:])
@@ -920,9 +920,11 @@ func (cmd *verifyAdaptorCmd) runOfflineCommand() error {
 	jointPublicKey, _, jointPublicKey1, _ := ed25519.GenerateJointKey(publicKey0, publicKey1)
 	fmt.Printf("joint public key: %s\n", encoding.BytesToHexString(jointPublicKey))
 	fmt.Printf("joint public key 1: %s\n", encoding.BytesToHexString(jointPublicKey1))
+	/*
 	aggSigBytes := ed25519.AddSignature(noncePoint0, noncePoint1)
 	aggSigBytes = ed25519.AddSignature(aggSigBytes, adaptorPoint)
 	fmt.Printf("Agg R %v\n", aggSigBytes)
+	*/
 	verified := ed25519.VerifyAdaptorSignature(jointPublicKey1, jointPublicKey, noncePoint0, noncePoint1, adaptorPoint, msgBytes, adaptorSignature)
 	fmt.Printf("verified: %t\n", verified)
 	if verified {
@@ -961,7 +963,7 @@ func (cmd *signWithAdaptorCmd) runOfflineCommand() error {
 		return err
 	}
 	localSigBytes := ed25519.JointSignWithAdaptor(cmd.privateKey, jointPrivateKey, noncePoint0, noncePoint1, adaptorPoint, msgBytes)
-	fmt.Println("signature: %s\n", encoding.BytesToHexString(localSigBytes))
+	fmt.Printf("signature: %s\n", encoding.BytesToHexString(localSigBytes))
 	return nil
 }
 
