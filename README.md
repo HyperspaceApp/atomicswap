@@ -56,8 +56,8 @@ Commands:
   buildadaptor
   signwithadaptor <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor>
   verifyadaptor <local private key> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor signature>
-  claimwithadaptor <local signature> <peer signature> <adaptor point> <adaptor>
-  extractsecret <claim transaction> <local signature> <peer signature>
+  claimwithadaptor <local signature> <peer signature> <claim transaction> <adaptor point> <adaptor>
+  extractsecret <claim signature> <local signature> <peer signature>
 ```
 
 **`buildkeys`**
@@ -109,3 +109,11 @@ The `signwithadaptor` command signs a claim transaction using the secret adaptor
 **`verifyadaptor <local private key> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor signature>`**
 
 The `verifyadaptor` command verifies the peer's `<adaptor signature>` is valid for the given `<claim transaction>`. If valid, the command also generates and prints your own adaptor signature.
+
+**`claimwithadaptor <local signature> <peer signature> <claim transaction> <adaptor point> <adaptor>`**
+
+The `claimwithadaptor` command aggregates `<local signature>`, `<peer signature>`, and `<adaptor>` to make a valid signature for `<claim transaction>`. The valid claim signature from `<claim transaction>`, when broadcasted to the network, will leak the `<adaptor>` to your peer - and only to your peer.
+
+**`extractsecret <claim signature> <local signature> <peer signature>`**
+
+The `extractsecret` command subtracts the `<local signature>` and `<peer signature>` from `<claim signature>` to deduce the secret `<adaptor>`. With this, you can call `claimwithadaptor` to retrieve your coins.
