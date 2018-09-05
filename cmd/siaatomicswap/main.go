@@ -242,7 +242,7 @@ func run() (err error, showUsage bool) {
 	case "signwithadaptor":
 		cmdArgs = 8
 	case "claimwithadaptor":
-		cmdArgs = 4
+		cmdArgs = 5
 	case "extractsecret":
 		cmdArgs = 3
 	default:
