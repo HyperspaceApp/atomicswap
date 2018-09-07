@@ -38,7 +38,7 @@ The refund transaction is built in advance. This transaction is timelocked. The 
 
 Once both participants have fully signed refund transactions, they can feel at ease broadcasting the initial funding transaction. If something goes wrong, they can always broadcast the refund transactions after the timelock to get their coins back. Participant 0's timelock should be well into the future - for example, 24 hours - and participant 1's timelock should be well beyond that - for example, 48 hours.
 
-The claim transaction is where the adaptor comes into play. The claim transaction pays out from the joint address to the intended participant's address. Participant 1 generates an adaptor for use on both blockchains. Participant 1 then signs both claim transactions and shares the signatures with participant 0. Participant 0 verifies both signatures, then signs participant 1's claim transaction and shares it with him. Participant 1 completes the signature by adding his original signature, participant 0's signature, and the adaptor, and then broadcasts the claim transaction to the blockchain, claiming his coins. Participant 0 can then calculate the adaptor by taking the finalized claim signature, subtracting his signature, and also subtracting participant 1's original signature. Then participant 0 can complete his own transaction by adding the adaptor to his own claim transaction. Participant 0 can then broadcast his claim transaction and claim his coins.
+The claim transaction is where the adaptor comes into play. The claim transaction pays out from the joint address to the intended participant's address. Participant 1 generates an adaptor for use on both blockchains. Participant 1 then signs both claim transactions and shares the signatures with participant 0. Participant 0 verifies both signatures, then signs participant 1's claim transaction and shares it with him. Participant 1 completes the signature by adding his original signature, participant 0's signature, and the adaptor, and then broadcasts the claim transaction to the blockchain, claiming his coins. Participant 0 can then calculate the adaptor by taking the finalized claim signature, subtracting his signature, and also subtracting participant 1's original signature. Then participant 0 can complete his own transaction by adding the adaptor to his own claim transaction. Participant 0 can then broadcast his claim transaction and claim his coins.<sup>1</sup>
 
 ## Create Keypairs and Build Transactions
 
@@ -134,3 +134,6 @@ The `claimwithadaptor` command aggregates `<local signature>`, `<peer signature>
 **`extractsecret <claim signature> <local signature> <peer signature>`**
 
 The `extractsecret` command subtracts the `<local signature>` and `<peer signature>` from `<claim signature>` to deduce the secret `<adaptor>`. With this, you can call `claimwithadaptor` to retrieve your coins.
+
+## References
+<sup>1</sup> Gibson, Adam (2017), [Flipping the scriptless script on Schnorr](https://joinmarket.me/blog/blog/flipping-the-scriptless-script-on-schnorr/)
