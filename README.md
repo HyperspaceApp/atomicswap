@@ -2,10 +2,15 @@
 
 This repository contains utilities to manually perform cross-chain atomic swaps between various supported pairs of cryptocurrencies. At the moment, support exists for the following coins and wallets:
 
+* Space Cash ([Hyperspace Core](https://github.com/HyperspaceApp/Hyperspace))
 * Siacoin ([Siacoin Core](https://gitlab.com/NebulousLabs/Sia))
 
 Pull requests implementing support for additional cryptocurrencies and wallets
 are encouraged. 
+
+These tools do not operate solely on-chain. A side-channel is required between each party performing the swap in order to exchange additional data. This side-channel could be as simple as a text chat and copying data. Until a more streamlined implementation of the side channel exists, such as the Lightning Network, these tools suffice as a proof-of-concept for cross-chain atomic swaps and a way for early adopters to try out the technology.
+
+Due to the requirements of manually exchanging data and creating, sending, and watching for the relevant transactions, it is highly recommended to read this README in its entirety before attempting to use these tools. The sections below explain the principles on which the tools operate and the instructions for how to use them safely.
 
 ## Build Instructions
 
@@ -22,6 +27,18 @@ $ go install ./cmd/...
 ```
 
 ## Theory
+
+A cross-chain swap is a trade between two users of different cryptocurrencies. For example, one party may send Space Cash to a second party's Space Cash address, while the second party would send Siacoin to the first party's Siacoin address. However, as the blockchains are unrelated and transactions can not be reversed, this provides no protection against one of the parties never honoring their end of the trade. One common solution to this problem is to introduce a mutually-trusted third party for escrow. An atomic cross-chain swap solves this problem without the need for a third party. 
+
+This tool provides a variant of the atomic cross-chain swap technique that uses Schnorr adaptor signatures. This variant will henceforth be known as a "scriptless atomic swap" due to the fact that coins using Schnorr signatures, such as Space Cash, do not need to have scripting support to enable the swap. The only requirement is that the consensus supports some form of transaction timelock. The ability to swap trustlessly derives entirely from careful aggregate key and nonce creation. To an outside observer, the swap transactions should not be linkable between chains and should be indistinguishable from normal transactions.
+
+Scriptless atomic swaps involve each party paying a funding transaction into a joint public key's address, one address for each blockchain. The address contains an output that is spendable via a 2-of-2 aggregate signature between the two participants: participant 0 and participant 1. Once the funding has been paiding into the joint key's address, both parties must sign to release it either back to the funder via a refund transaction or to the original intended recipient via a claim transaction. These transactions are designed as follows:
+
+The refund transaction is built in advance. This transaction is timelocked. The builder shares the refund with his peer and asks for the peer's signature. Then, at any point after the timelock if the output from the joint address has not yet been spent, the user can sign the refund transaction himself - prividing the 2nd of 2 signatures - and broadcast the refund transaction to regain his coins. The peer does likewise for his own refund transaction on his own chain.
+
+Once both participants have fully signed refund transactions, they can feel at ease broadcasting the initial funding transaction. If something goes wrong, they can always broadcast the refund transactions after the timelock to get their coins back. Participant 0's timelock should be well into the future - for example, 24 hours - and participant 1's timelock should be well beyond that - for example, 48 hours.
+
+The claim transaction is where the adaptor comes into play. The claim transaction pays out from the joint address to the intended participant's address. Participant 1 generates an adaptor for use on both blockchains. Participant 1 then signs both claim transactions and shares the signatures with participant 0. Participant 0 verifies both signatures, then signs participant 1's claim transaction and shares it with him. Participant 1 completes the signature by adding his original signature, participant 0's signature, and the adaptor, and then broadcasts the claim transaction to the blockchain, claiming his coins. Participant 0 can then calculate the adaptor by taking the finalized claim signature, subtracting his signature, and also subtracting participant 1's original signature. Then participant 0 can complete his own transaction by adding the adaptor to his own claim transaction. Participant 0 can then broadcast his claim transaction and claim his coins.<sup>1</sup>
 
 ## Create Keypairs and Build Transactions
 
@@ -56,8 +73,8 @@ Commands:
   buildadaptor
   signwithadaptor <local private key> <local participant number> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor>
   verifyadaptor <local private key> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor signature>
-  claimwithadaptor <local signature> <peer signature> <adaptor point> <adaptor>
-  extractsecret <claim transaction> <local signature> <peer signature>
+  claimwithadaptor <local signature> <peer signature> <claim transaction> <adaptor point> <adaptor>
+  extractsecret <claim signature> <local signature> <peer signature>
 ```
 
 **`buildkeys`**
@@ -109,3 +126,14 @@ The `signwithadaptor` command signs a claim transaction using the secret adaptor
 **`verifyadaptor <local private key> <peer public key> <nonce point 0> <nonce point 1> <adaptor point> <claim transaction> <adaptor signature>`**
 
 The `verifyadaptor` command verifies the peer's `<adaptor signature>` is valid for the given `<claim transaction>`. If valid, the command also generates and prints your own adaptor signature.
+
+**`claimwithadaptor <local signature> <peer signature> <claim transaction> <adaptor point> <adaptor>`**
+
+The `claimwithadaptor` command aggregates `<local signature>`, `<peer signature>`, and `<adaptor>` to make a valid signature for `<claim transaction>`. The valid claim signature from `<claim transaction>`, when broadcasted to the network, will leak the `<adaptor>` to your peer - and only to your peer.
+
+**`extractsecret <claim signature> <local signature> <peer signature>`**
+
+The `extractsecret` command subtracts the `<local signature>` and `<peer signature>` from `<claim signature>` to deduce the secret `<adaptor>`. With this, you can call `claimwithadaptor` to retrieve your coins.
+
+## References
+<sup>1</sup> Gibson, Adam (2017), [Flipping the scriptless script on Schnorr](https://joinmarket.me/blog/blog/flipping-the-scriptless-script-on-schnorr/)
