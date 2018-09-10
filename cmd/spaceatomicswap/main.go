@@ -680,8 +680,9 @@ func (cmd *buildTransactionsCmd) runCommand(ctx context.Context, c client.Client
 		publicKey0 = cmd.peerPublicKey
 		publicKey1 = localPublicKey
 	}
-	_, err := ed25519.GenerateJointPrivateKey(publicKey0, publicKey1, cmd.privateKey, cmd.participantNum)
-	jointPublicKey, _, _, _ := ed25519.GenerateJointKey(publicKey0, publicKey1)
+	pubkeys := []ed25519.PublicKey{publicKey0, publicKey1}
+	_, err := ed25519.GenerateJointPrivateKey(pubkeys, cmd.privateKey, cmd.participantNum)
+	jointPublicKey, _, _ := ed25519.GenerateJointKey(pubkeys)
 	unlockHash := publicKeyToAddress(jointPublicKey)
 	fmt.Printf("joint address: %s\n", unlockHash.String())
 	wbtg, err := c.WalletBuildTransactionGet(unlockHash, cmd.amount)
@@ -767,7 +768,8 @@ func (cmd *signRefundCmd) runOfflineCommand() error {
 		publicKey0 = cmd.peerPublicKey
 		publicKey1 = localPublicKey
 	}
-	jointPrivateKey, err := ed25519.GenerateJointPrivateKey(publicKey0, publicKey1, cmd.privateKey, cmd.participantNum)
+	pubkeys := []ed25519.PublicKey{publicKey0, publicKey1}
+	jointPrivateKey, err := ed25519.GenerateJointPrivateKey(pubkeys, cmd.privateKey, cmd.participantNum)
 	if err != nil {
 		return err
 	}
@@ -778,7 +780,8 @@ func (cmd *signRefundCmd) runOfflineCommand() error {
 	copy(msgBytes[:], message[:])
 	copy(noncePoint0Bytes[:], cmd.noncePoint0[:])
 	copy(noncePoint1Bytes[:], cmd.noncePoint1[:])
-	sig := ed25519.JointSign(cmd.privateKey, jointPrivateKey, noncePoint0Bytes, noncePoint1Bytes, msgBytes)
+	noncePoints := []ed25519.CurvePoint{noncePoint0Bytes, noncePoint1Bytes}
+	sig := ed25519.JointSign(cmd.privateKey, jointPrivateKey, noncePoints, msgBytes)
 	fmt.Printf("signature: %s\n", encoding.BytesToHexString(sig))
 	return nil
 }
@@ -799,7 +802,8 @@ func (cmd *verifyRefundSignatureCmd) runOfflineCommand() error {
 		publicKey0 = cmd.peerPublicKey
 		publicKey1 = localPublicKey
 	}
-	jointPrivateKey, err := ed25519.GenerateJointPrivateKey(publicKey0, publicKey1, cmd.privateKey, cmd.participantNum)
+	pubkeys := []ed25519.PublicKey{publicKey0, publicKey1}
+	jointPrivateKey, err := ed25519.GenerateJointPrivateKey(pubkeys, cmd.privateKey, cmd.participantNum)
 	if err != nil {
 		return err
 	}
@@ -817,7 +821,8 @@ func (cmd *verifyRefundSignatureCmd) runOfflineCommand() error {
 	copy(noncePoint1Bytes[:], cmd.noncePoint1[:])
 	copy(peerSignatureBytes[:], cmd.peerRefundSignature[:])
 	fmt.Printf("peer signature: %s\n", encoding.BytesToHexString(peerSignatureBytes))
-	localSignatureBytes := ed25519.JointSign(cmd.privateKey, jointPrivateKey, noncePoint0Bytes, noncePoint1Bytes, msgBytes)
+	noncePoints := []ed25519.CurvePoint{noncePoint0Bytes, noncePoint1Bytes}
+	localSignatureBytes := ed25519.JointSign(cmd.privateKey, jointPrivateKey, noncePoints, msgBytes)
 	fmt.Printf("local signature: %s\n", encoding.BytesToHexString(localSignatureBytes))
 	signature := ed25519.AddSignature(localSignatureBytes, peerSignatureBytes)
 	refundTx := cmd.refundTransaction
@@ -913,11 +918,13 @@ func (cmd *verifyAdaptorCmd) runOfflineCommand() error {
 	fmt.Printf("public key 0: %s\n", encoding.BytesToHexString(publicKey0))
 	publicKey1 = cmd.peerPublicKey
 	fmt.Printf("public key 1: %s\n", encoding.BytesToHexString(publicKey1))
-	jointPrivateKey, err := ed25519.GenerateJointPrivateKey(publicKey0, publicKey1, cmd.privateKey, 0)
+	pubkeys := []ed25519.PublicKey{publicKey0, publicKey1}
+	jointPrivateKey, err := ed25519.GenerateJointPrivateKey(pubkeys, cmd.privateKey, 0)
 	if err != nil {
 		return err
 	}
-	jointPublicKey, _, jointPublicKey1, _ := ed25519.GenerateJointKey(publicKey0, publicKey1)
+	jointPublicKey, jointPublicKeys, _ := ed25519.GenerateJointKey(pubkeys)
+	jointPublicKey1 := jointPublicKeys[1]
 	fmt.Printf("joint public key: %s\n", encoding.BytesToHexString(jointPublicKey))
 	fmt.Printf("joint public key 1: %s\n", encoding.BytesToHexString(jointPublicKey1))
 	/*
@@ -958,7 +965,8 @@ func (cmd *signWithAdaptorCmd) runOfflineCommand() error {
 	message := cmd.claimTransaction.SigHash(0)
 	msgBytes := make([]byte, crypto.HashSize)
 	copy(msgBytes[:], message[:])
-	jointPrivateKey, err := ed25519.GenerateJointPrivateKey(publicKey0, publicKey1, cmd.privateKey, cmd.participantNum)
+	pubkeys := []ed25519.PublicKey{publicKey0, publicKey1}
+	jointPrivateKey, err := ed25519.GenerateJointPrivateKey(pubkeys, cmd.privateKey, cmd.participantNum)
 	if err != nil {
 		return err
 	}
