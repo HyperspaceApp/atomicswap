@@ -56,7 +56,7 @@ The claim transaction is where the adaptor comes into play. The claim transactio
 
 Separate command line utilities are provided to handle the transactions required
 to perform a cross-chain atomic swap for each supported blockchain.  For a swap
-between Bitcoin and Decred, the two utilities `spaceatomicswap` and
+between Hyperspace and Sia, the two utilities `spaceatomicswap` and
 `siaatomicswap` are used.  Both tools must be used by both parties performing
 the swap.
 
